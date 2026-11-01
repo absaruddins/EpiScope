@@ -69,6 +69,7 @@ EpiScope/
 | Forecast rows | 512 |
 | Resource allocation rows | 1,280 |
 | Dashboard data size | 1.08 MB |
+| Automated tests | 7 passed |
 
 ## 7. Analytical Methods
 - Data quality: 17 implemented checks.
@@ -78,7 +79,17 @@ EpiScope/
 - Forecasting: Seasonal Naive for dengue and diarrhoea.
 - Resource allocation: proportional baseline and integer LP model.
 
-## 8. Dashboard
+## 8. Scale Benchmarks and Evaluation
+
+| Scale Factor | Total Rows | Read Time | Aggregation Time |
+|---|---:|---:|---:|
+| 0.25 | 6,375,000 | 11.42 sec | 13.47 sec |
+| 0.50 | 12,750,000 | 13.22 sec | 6.46 sec |
+| 1.00 | 25,500,000 | 13.78 sec | 12.76 sec |
+
+The outbreak evaluation detected 7 of 31 synthetic events (22.58% event sensitivity), with a median detection delay of 21 days. These results indicate that the detector needs improvement.
+
+## 9. Dashboard
 The D3.js v7 dashboard contains:
 1. District disease map.
 2. Weekly disease trend.
@@ -92,23 +103,28 @@ python -m http.server 8000
 ```
 Open http://localhost:8000/dashboard/
 
-## 9. Pending Requirements
-- Generate and verify the 25-million-row SF=1 dataset.
-- Run SF 0.25, 0.5 and 1.0 benchmarks.
-- Improve and evaluate outbreak detection methods.
-- Compare additional forecasting models.
-- Validate prediction intervals and WIS.
-- Complete automated tests and pipeline scripts.
-- Complete technical report and Ministry policy brief.
+## 9. Remaining Requirements
+
+- Implement production-grade Delta MERGE for incremental processing.
+- Improve and validate outbreak detection methods.
+- Compare additional forecasting models and validate prediction intervals and WIS.
+- Complete reproducible pipeline scripts and operational monitoring.
 - Record the required project presentation video.
 
-## 10. Limitations
+Completed evidence:
+- SF=0.25, 0.50 and 1.00 datasets generated and verified.
+- SF=1.00 contains 25 million base rows and 25.5 million rows including duplicates.
+- Spark scale benchmarks completed for all three scale factors.
+- Automated test suite: 7 tests passed.
+- Technical Report and Ministry Policy Brief prepared and uploaded (user-confirmed).
+
+## 11. Limitations
 This is an academic prototype, not a production surveillance system.
 Facility and stock data are synthetic.
 The outbreak detector is a simple prototype threshold method.
 The forecasting method currently uses Seasonal Naive.
 The resource allocation results are not clinical recommendations.
 
-## 11. Responsible Use
+## 12. Responsible Use
 Do not use synthetic data, prototype alerts or forecasts for real
 clinical decisions or operational resource deployment.

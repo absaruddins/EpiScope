@@ -1,6 +1,4 @@
-# EpiScope Requirement Traceability Matrix
-
-This matrix records the current implementation status. Pending items are not considered complete.
+# EpiScope Traceability Matrix
 
 | Requirement | Current implementation | Status |
 |---|---|---|
@@ -25,10 +23,10 @@ This matrix records the current implementation status. Pending items are not con
 | 14-day outage recovery | All 9,851 clean records recovered in simulation | Simulation verified |
 | D3 dashboard | Five coordinated views; district zoom and highlight | Browser verified |
 | Dashboard size | 1.08 MB aggregate dashboard data | Verified |
-| SF=1 25-million-row dataset | Target exists in config; dataset not generated | Pending |
-| Scale factor benchmarks | SF 0.25, 0.5 and 1.0 benchmarks not run | Pending |
+| SF=1 25-million-row dataset | 25,000,000 base rows generated; 25,500,000 total rows including 2% duplicates; 250 Parquet chunks verified. | Verified |
+| Scale factor benchmarks | SF 0.25, 0.50 and 1.0 Spark read and aggregation benchmarks executed and results saved. | Verified |
 | Production Delta MERGE | Current incremental test uses Spark deduplication simulation | Pending |
-| Automated test suite | Test folder exists; full automated suite not verified | Pending |
-| Technical report | Not yet prepared | Pending |
-| Ministry policy brief | Not yet prepared | Pending |
+| Automated test suite | 7 automated pytest tests executed successfully; 7 passed, 0 failed. | Verified |
+| Technical report | Prepared and uploaded to EpiScope/reports (user-confirmed) | Completed (user-confirmed) |
+| Ministry policy brief | Prepared and uploaded to EpiScope/reports (user-confirmed) | Completed (user-confirmed) |
 | Presentation video | Not yet recorded | Pending |
