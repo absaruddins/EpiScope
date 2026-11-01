@@ -19,3 +19,5 @@ logs/
 *.tmp
 *.log
 .DS_Store
+# Ignore duplicate report in project root
+/EpiScope_Technical_Report.pdf
