@@ -97,13 +97,21 @@ The D3.js v7 dashboard contains:
 4. Four-week forecast.
 5. Resource allocation comparison.
 
+  ![My Project Screenshot](dashboard_map.png)
+  
+              pig:Dashboard_map
+              
+  ![My Project Screenshot](dashboard_chart.png)
+  
+             pig:Dashboard_chart
+
 Run locally from the project directory:
 ```bash
 python -m http.server 8000
 ```
 Open http://localhost:8000/dashboard/
 
-## 9. Remaining Requirements
+## 10. Remaining Requirements
 
 - Implement production-grade Delta MERGE for incremental processing.
 - Improve and validate outbreak detection methods.
@@ -129,7 +137,7 @@ The resource allocation results are not clinical recommendations.
 Do not use synthetic data, prototype alerts or forecasts for real
 clinical decisions or operational resource deployment.
 
-## 10. Recent Engineering and Privacy Validation
+## 13. Recent Engineering and Privacy Validation
 
 ### Delta Lake MERGE prototype
 - Delta Lake 4.0.0 was configured successfully with Spark 4.0.4.
