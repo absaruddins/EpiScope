@@ -21,3 +21,6 @@ logs/
 .DS_Store
 # Ignore duplicate report in project root
 /EpiScope_Technical_Report.pdf
+
+# Local dashboard backup files
+dashboard/index.html.bak

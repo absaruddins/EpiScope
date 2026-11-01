@@ -75,17 +75,18 @@ th{background:#f4f7fb}
 
 <script>
 const base = "data/";
+const safeBase = "data_safe/";
 const tooltip = d3.select("#tooltip");
 const diseaseSelect = document.getElementById("disease");
 const districtSelect = document.getElementById("district");
 
 Promise.all([
  d3.json(base+"district_boundaries.geojson"),
- d3.csv(base+"district_map.csv", d3.autoType),
- d3.csv(base+"weekly_trend.csv", d3.autoType),
- d3.csv(base+"outbreak_alerts.csv", d3.autoType),
- d3.csv(base+"forecast.csv", d3.autoType),
- d3.csv(base+"resource_allocation.csv", d3.autoType)
+ d3.csv(safeBase+"district_map.csv", d3.autoType),
+ d3.csv(safeBase+"weekly_trend.csv", d3.autoType),
+ d3.csv(safeBase+"outbreak_alerts.csv", d3.autoType),
+ d3.csv(safeBase+"forecast.csv", d3.autoType),
+ d3.csv(safeBase+"resource_allocation.csv", d3.autoType)
 ]).then(([geo,map,weekly,alerts,forecast,resources])=>{
  const names = [...new Set(map.map(d=>d.district_name))].sort();
  names.forEach(n=>{
@@ -115,10 +116,10 @@ Promise.all([
    const s=selected();
    const rows=map.filter(d=>String(d.disease)===s.disease);
    const values=new Map(rows.map(d=>[
-     String(d.district_code),+d.total_cases
+     String(d.district_code),d.total_cases==null?null:Number(d.total_cases)
    ]));
 
-   const max=d3.max(rows,d=>+d.total_cases)||1;
+   const max=d3.max(rows,d=>d.total_cases==null?undefined:Number(d.total_cases))||1;
    const color=d3.scaleSequential()
      .domain([0,max]).interpolator(d3.interpolateYlOrRd);
 
@@ -150,7 +151,7 @@ Promise.all([
        const code=String(f.properties.adm2_pcode);
        const name=codeToName.get(code);
        if(selectedFeature && name===s.district) return "#2563eb";
-       return color(values.get(code)||0);
+       const value=values.get(code); return value==null?"#d1d5db":color(value);
      })
      .attr("stroke",f=>{
        const name=codeToName.get(String(f.properties.adm2_pcode));
@@ -166,7 +167,7 @@ Promise.all([
        tooltip.style("display","block")
          .style("left",(event.clientX+12)+"px")
          .style("top",(event.clientY+12)+"px")
-         .text(name+" | Cases: "+(values.get(code)||0));
+         .text(name+" | Cases: "+(values.get(code)==null?"Suppressed":values.get(code)));
      })
      .on("mouseleave",()=>tooltip.style("display","none"))
      .on("click",(event,f)=>{
@@ -187,10 +188,10 @@ Promise.all([
  function drawTrend(){
    let data=filtered(weekly);
    if(selected().district==="ALL"){
-     data=d3.rollups(data,v=>d3.sum(v,d=>+d.total_cases),d=>d.week_start)
+     data=d3.rollups(data,v=>v.some(d=>d.total_cases==null)?null:d3.sum(v,d=>Number(d.total_cases)),d=>d.week_start)
        .map(([week,cases])=>({week_start:week,total_cases:cases}));
    } else {
-     data=data.map(d=>({week_start:d.week_start,total_cases:+d.total_cases}));
+     data=data.map(d=>({week_start:d.week_start,total_cases:d.total_cases==null?null:Number(d.total_cases)}));
    }
    data.sort((a,b)=>new Date(a.week_start)-new Date(b.week_start));
    const w=600,h=300,m={top:15,right:20,bottom:45,left:55};
@@ -200,7 +201,7 @@ Promise.all([
    svg.append("g").attr("transform",`translate(0,${h-m.bottom})`).call(d3.axisBottom(x).ticks(6));
    svg.append("g").attr("transform",`translate(${m.left},0)`).call(d3.axisLeft(y));
    svg.append("path").datum(data).attr("fill","none").attr("stroke","#2563eb").attr("stroke-width",2)
-     .attr("d",d3.line().x(d=>x(new Date(d.week_start))).y(d=>y(d.total_cases)));
+     .attr("d",d3.line().defined(d=>Number.isFinite(d.total_cases)).x(d=>x(new Date(d.week_start))).y(d=>y(d.total_cases)));
  }
  function drawAlerts(){
    const data=filtered(alerts).sort((a,b)=>new Date(b.week_start)-new Date(a.week_start));
@@ -208,7 +209,7 @@ Promise.all([
    const table=d3.select("#alerts").html("").append("table");
    table.append("thead").append("tr").selectAll("th").data(cols).join("th").text(d=>d.replaceAll("_"," "));
    const tr=table.append("tbody").selectAll("tr").data(data).join("tr");
-   tr.selectAll("td").data(d=>cols.map(k=>d[k])).join("td").text(d=>d??"");
+   tr.selectAll("td").data(d=>cols.map(k=>d[k])).join("td").text(d=>d==null?"Suppressed":d);
    if(!data.length)d3.select("#alerts").append("p").text("No alerts for this selection.");
  }
  function drawForecast(){
@@ -227,9 +228,9 @@ Promise.all([
        d3.rollup(
          data,
          v=>({
-           forecast_cases:d3.sum(v,d=>+d.forecast_cases),
-           lower_80:d3.sum(v,d=>+d.lower_80),
-           upper_80:d3.sum(v,d=>+d.upper_80)
+           forecast_cases:v.some(d=>d.forecast_cases==null)?null:d3.sum(v,d=>Number(d.forecast_cases)),
+           lower_80:v.some(d=>d.lower_80==null)?null:d3.sum(v,d=>Number(d.lower_80)),
+           upper_80:v.some(d=>d.upper_80==null)?null:d3.sum(v,d=>Number(d.upper_80))
          }),
          d=>d3.timeFormat("%Y-%m-%d")(d.forecast_week)
        ),
@@ -238,9 +239,9 @@ Promise.all([
    } else {
      data=data.map(d=>({
        forecast_week:d.forecast_week,
-       forecast_cases:+d.forecast_cases,
-       lower_80:+d.lower_80,
-       upper_80:+d.upper_80
+       forecast_cases:d.forecast_cases==null?null:Number(d.forecast_cases),
+       lower_80:d.lower_80==null?null:Number(d.lower_80),
+       upper_80:d.upper_80==null?null:Number(d.upper_80)
      }));
    }
 
@@ -256,7 +257,7 @@ Promise.all([
      .domain(d3.extent(data,d=>d.forecast_week))
      .range([m.left,w-m.right]);
 
-   const ymax=d3.max(data,d=>+d.upper_80)||1;
+   const ymax=d3.max(data,d=>d.upper_80==null?undefined:d.upper_80)||1;
    const y=d3.scaleLinear()
      .domain([0,ymax*1.15||1]).nice()
      .range([h-m.bottom,m.top]);
@@ -272,22 +273,22 @@ Promise.all([
    // 80% prediction interval
    svg.append("path").datum(data)
      .attr("fill","#93c5fd").attr("opacity",0.4)
-     .attr("d",d3.area()
+     .attr("d",d3.area().defined(d=>Number.isFinite(d.lower_80)&&Number.isFinite(d.upper_80))
        .x(d=>x(d.forecast_week))
-       .y0(d=>y(+d.lower_80))
-       .y1(d=>y(+d.upper_80)));
+       .y0(d=>y(d.lower_80))
+       .y1(d=>y(d.upper_80)));
 
    // Forecast line
    svg.append("path").datum(data)
      .attr("fill","none").attr("stroke","#2563eb")
      .attr("stroke-width",2.5)
-     .attr("d",d3.line()
+     .attr("d",d3.line().defined(d=>Number.isFinite(d.forecast_cases))
        .x(d=>x(d.forecast_week))
-       .y(d=>y(+d.forecast_cases)));
+       .y(d=>y(d.forecast_cases)));
 
-   svg.selectAll("circle").data(data).join("circle")
+   svg.selectAll("circle").data(data.filter(d=>Number.isFinite(d.forecast_cases))).join("circle")
      .attr("cx",d=>x(d.forecast_week))
-     .attr("cy",d=>y(+d.forecast_cases))
+     .attr("cy",d=>y(d.forecast_cases))
      .attr("r",5).attr("fill","#2563eb");
 
    root.append("p").attr("class","note")

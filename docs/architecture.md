@@ -85,6 +85,13 @@ The D3.js v7 dashboard displays a district map, weekly trends,
 outbreak alerts, forecasts and resource allocation comparisons.
 District selection supports map zoom and highlighting.
 
+
+### Delta Lake validation
+An isolated Delta Lake table was tested using MERGE. The test updated 2 existing rows and inserted 3 new rows. A repeated run created no additional records. This is a prototype validation, not a production incremental pipeline.
+
+### Dashboard privacy controls
+The dashboard reads privacy-safe CSV files from `dashboard/data_safe/`. Small observed counts and related indicators are suppressed, and null values are displayed as suppressed rather than treated as zero. Forecast values and intervals below the selected threshold are also hidden.
+
 ## 7. Privacy and Limitations
 Patient identifiers are hashed before clean Silver storage.
 The hashing salt must remain outside the public repository.
@@ -97,3 +104,6 @@ This system is not validated for real clinical decisions.
 - Full-scale 25-million-row SF=1 generation.
 - Scale-factor performance benchmarks.
 - Automated tests and reproducible pipeline scripts.
+
+### Privacy suppression status
+Small-cell suppression is implemented in the dashboard data layer. This reduces direct disclosure risk but is not a guarantee of anonymity. Complementary suppression and aggregation/differencing risks require further review.

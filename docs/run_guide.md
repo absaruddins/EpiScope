@@ -99,3 +99,19 @@ The SF=1.00 dataset contains 25 million base rows and 25.5 million total rows in
 - The large-scale generator does not include all reporting-delay fields used in the smaller prototype.
 
 Do not interpret prototype alerts, forecasts or resource allocations as validated clinical or operational recommendations.
+
+## 12. Additional Validation
+
+### Delta Lake MERGE test
+The isolated Delta MERGE test started with 9,851 records. It updated 2 matched records and inserted 3 new records, resulting in 9,854 unique records. Re-running the same source kept the row count at 9,854 and created no duplicate IDs. The second run matched and updated 5 records; therefore, this is a row-count/idempotent-insert test, not proof that unchanged rows are skipped.
+
+### Privacy-safe dashboard
+The dashboard now reads its CSV files from `dashboard/data_safe/`. Small observed counts and related indicators are suppressed. Forecast values from 0 to 4 and their intervals are also suppressed. Resource allocation data remain unchanged.
+
+The local HTTP server returned status 200, JavaScript syntax checks passed, and the user confirmed that the dashboard rendered correctly.
+
+These checks validate the academic prototype only. They do not establish production readiness or complete privacy assurance.
+
+
+### Privacy suppression status
+Small-cell suppression is implemented in the dashboard data layer. This reduces direct disclosure risk but is not a guarantee of anonymity. Complementary suppression and aggregation/differencing risks require further review.

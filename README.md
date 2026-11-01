@@ -128,3 +128,29 @@ The resource allocation results are not clinical recommendations.
 ## 12. Responsible Use
 Do not use synthetic data, prototype alerts or forecasts for real
 clinical decisions or operational resource deployment.
+
+## 10. Recent Engineering and Privacy Validation
+
+### Delta Lake MERGE prototype
+- Delta Lake 4.0.0 was configured successfully with Spark 4.0.4.
+- An isolated Delta table was created from 9,851 Silver records.
+- A MERGE test updated 2 existing records and inserted 3 new records.
+- Final row count: 9,854, with 9,854 unique encounter IDs.
+- Re-running the same source inserted no additional records or duplicates.
+- This validates MERGE behavior in an isolated prototype, not production deployment.
+
+### Privacy-safe dashboard
+- Dashboard data files are served from `dashboard/data_safe/`.
+- Small observed counts from 1 to 4 are suppressed in the weekly trend, district map and outbreak alerts.
+- Related lab-confirmed and admitted counts are also suppressed.
+- Alert indicators are hidden when the associated observed count is suppressed.
+- Forecast values from 0 to 4 and their intervals are suppressed.
+- Resource allocation values are retained because they represent resource units, not case counts.
+- Original dashboard CSV files are preserved separately.
+
+### Dashboard validation
+- Dashboard HTML returned HTTP 200 from the local server.
+- JavaScript syntax and safe data paths passed automated checks.
+- Browser display was confirmed by the project user.
+
+Note: Small-cell suppression reduces direct disclosure risk but does not guarantee anonymity. Complementary suppression and aggregation/differencing risks require further review.

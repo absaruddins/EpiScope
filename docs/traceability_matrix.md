@@ -25,8 +25,11 @@
 | Dashboard size | 1.08 MB aggregate dashboard data | Verified |
 | SF=1 25-million-row dataset | 25,000,000 base rows generated; 25,500,000 total rows including 2% duplicates; 250 Parquet chunks verified. | Verified |
 | Scale factor benchmarks | SF 0.25, 0.50 and 1.0 Spark read and aggregation benchmarks executed and results saved. | Verified |
-| Production Delta MERGE | Current incremental test uses Spark deduplication simulation | Pending |
+| Production Delta MERGE | Production incremental pipeline not yet implemented; isolated Delta MERGE prototype separately verified. | Pending |
 | Automated test suite | 7 automated pytest tests executed successfully; 7 passed, 0 failed. | Verified |
 | Technical report | Prepared and uploaded to EpiScope/reports (user-confirmed) | Completed (user-confirmed) |
 | Ministry policy brief | Prepared and uploaded to EpiScope/reports (user-confirmed) | Completed (user-confirmed) |
 | Presentation video | Not yet recorded | Pending |
+| Delta Lake MERGE prototype | Isolated Delta table: 2 rows updated, 3 inserted; repeated MERGE created no duplicate inserts. | Verified |
+| Dashboard small-cell suppression | Small observed counts and related indicators suppressed in privacy-safe dashboard CSVs; null values handled in D3. | Verified |
+| Privacy assurance review | Small-cell suppression implemented; complementary suppression and aggregation/differencing risks need further review. | Pending |
