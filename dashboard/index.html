@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EpiScope | Bangladesh Disease Surveillance</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7fb;color:#172033;font-family:Arial,sans-serif}
+header{background:#102a43;color:white;padding:22px 28px}
+header h1{margin:0 0 7px;font-size:27px}
+header p{margin:0;color:#cbd5e1}
+main{padding:20px;max-width:1500px;margin:auto}
+.controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+select{padding:9px;border:1px solid #ccd5e0;border-radius:6px;background:white}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.panel{background:white;border:1px solid #e0e6ee;border-radius:10px;padding:16px;min-width:0}
+.panel h2{font-size:17px;margin:0 0 12px}
+.map-panel{grid-column:1/-1}
+svg{width:100%;height:auto;display:block}
+.map-panel svg{max-height:520px}
+.tooltip{position:fixed;display:none;background:#102a43;color:white;padding:9px 12px;border-radius:6px;font-size:12px;pointer-events:none}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #e8edf3}
+th{background:#f4f7fb}
+.table-wrap{max-height:340px;overflow:auto}
+.note{font-size:12px;color:#64748b;margin-top:10px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.map-panel{grid-column:auto}}
+</style>
+</head>
+<body>
+<header>
+<h1>EpiScope</h1>
+<p>Bangladesh Disease Surveillance, Forecasting & Resource Allocation</p>
+</header>
+<main>
+<div class="controls">
+<label>Disease:
+<select id="disease">
+<option value="dengue">Dengue</option>
+<option value="diarrhoea">Diarrhoea</option>
+<option value="influenza_ili">Influenza-like illness</option>
+<option value="malaria">Malaria</option>
+</select></label>
+<label>District:
+<select id="district"><option value="ALL">All districts</option></select></label>
+</div>
+
+<div class="grid">
+<section class="panel map-panel">
+<h2>1. District Disease Map</h2>
+<div id="map"></div>
+</section>
+<section class="panel">
+<h2>2. Weekly Disease Trend</h2>
+<div id="trend"></div>
+</section>
+<section class="panel">
+<h2>3. Outbreak Alerts</h2>
+<div class="table-wrap" id="alerts"></div>
+</section>
+<section class="panel">
+<h2>4. Four-Week Forecast</h2>
+<div id="forecast"></div>
+</section>
+<section class="panel">
+<h2>5. Resource Allocation</h2>
+<div id="resources"></div>
+</section>
+</div>
+<p class="note">Data source: EpiScope Gold aggregate datasets. Synthetic facility and resource data are illustrative, not actual clinical stock. Dashboard contains no patient-level records.</p>
+</main>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const base = "data/";
+const tooltip = d3.select("#tooltip");
+const diseaseSelect = document.getElementById("disease");
+const districtSelect = document.getElementById("district");
+
+Promise.all([
+ d3.json(base+"district_boundaries.geojson"),
+ d3.csv(base+"district_map.csv", d3.autoType),
+ d3.csv(base+"weekly_trend.csv", d3.autoType),
+ d3.csv(base+"outbreak_alerts.csv", d3.autoType),
+ d3.csv(base+"forecast.csv", d3.autoType),
+ d3.csv(base+"resource_allocation.csv", d3.autoType)
+]).then(([geo,map,weekly,alerts,forecast,resources])=>{
+ const names = [...new Set(map.map(d=>d.district_name))].sort();
+ names.forEach(n=>{
+   const o=document.createElement("option");
+   o.value=n;o.textContent=n;districtSelect.appendChild(o);
+ });
+ const codeToName = new Map(map.map(d=>[String(d.district_code),d.district_name]));
+ const features = geo.features;
+ const projection = d3.geoMercator().fitSize([900,470],geo);
+ const path = d3.geoPath(projection);
+
+ function selected(){
+   return {
+     disease:diseaseSelect.value,
+     district:districtSelect.value
+   };
+ }
+ function filtered(data){
+   const s=selected();
+   return data.filter(d=>
+     String(d.disease)===s.disease &&
+     (s.district==="ALL" ||
+       (d.district_name || codeToName.get(String(d.district_code)))===s.district)
+   );
+ }
+ function drawMap(){
+   const s=selected();
+   const rows=map.filter(d=>String(d.disease)===s.disease);
+   const values=new Map(rows.map(d=>[
+     String(d.district_code),+d.total_cases
+   ]));
+
+   const max=d3.max(rows,d=>+d.total_cases)||1;
+   const color=d3.scaleSequential()
+     .domain([0,max]).interpolator(d3.interpolateYlOrRd);
+
+   const selectedFeature = s.district==="ALL" ? null :
+     features.find(f=>
+       codeToName.get(String(f.properties.adm2_pcode))===s.district
+     );
+
+   const svg=d3.select("#map").html("").append("svg")
+     .attr("viewBox","0 0 900 470");
+
+   // Zoom to selected district; otherwise show all Bangladesh
+   const projection=d3.geoMercator();
+
+   if(selectedFeature){
+     projection.fitExtent(
+       [[180,35],[720,435]],
+       selectedFeature
+     );
+   } else {
+     projection.fitSize([900,470],geo);
+   }
+
+   const path=d3.geoPath(projection);
+
+   svg.selectAll("path").data(features).join("path")
+     .attr("d",path)
+     .attr("fill",f=>{
+       const code=String(f.properties.adm2_pcode);
+       const name=codeToName.get(code);
+       if(selectedFeature && name===s.district) return "#2563eb";
+       return color(values.get(code)||0);
+     })
+     .attr("stroke",f=>{
+       const name=codeToName.get(String(f.properties.adm2_pcode));
+       return selectedFeature && name===s.district ? "#172554" : "#ffffff";
+     })
+     .attr("stroke-width",f=>{
+       const name=codeToName.get(String(f.properties.adm2_pcode));
+       return selectedFeature && name===s.district ? 3 : 0.8;
+     })
+     .on("mousemove",(event,f)=>{
+       const code=String(f.properties.adm2_pcode);
+       const name=codeToName.get(code)||f.properties.adm2_en||code;
+       tooltip.style("display","block")
+         .style("left",(event.clientX+12)+"px")
+         .style("top",(event.clientY+12)+"px")
+         .text(name+" | Cases: "+(values.get(code)||0));
+     })
+     .on("mouseleave",()=>tooltip.style("display","none"))
+     .on("click",(event,f)=>{
+       const code=String(f.properties.adm2_pcode);
+       const name=codeToName.get(code);
+       if(name){
+         districtSelect.value=name;
+         render();
+       }
+     });
+
+   svg.append("text")
+     .attr("x",20).attr("y",25)
+     .attr("font-size",16).attr("font-weight","bold")
+     .attr("fill","#172033")
+     .text(selectedFeature ? s.district+" District" : "Bangladesh — All Districts");
+ }
+ function drawTrend(){
+   let data=filtered(weekly);
+   if(selected().district==="ALL"){
+     data=d3.rollups(data,v=>d3.sum(v,d=>+d.total_cases),d=>d.week_start)
+       .map(([week,cases])=>({week_start:week,total_cases:cases}));
+   } else {
+     data=data.map(d=>({week_start:d.week_start,total_cases:+d.total_cases}));
+   }
+   data.sort((a,b)=>new Date(a.week_start)-new Date(b.week_start));
+   const w=600,h=300,m={top:15,right:20,bottom:45,left:55};
+   const svg=d3.select("#trend").html("").append("svg").attr("viewBox",`0 0 ${w} ${h}`);
+   const x=d3.scaleTime().domain(d3.extent(data,d=>new Date(d.week_start))).range([m.left,w-m.right]);
+   const y=d3.scaleLinear().domain([0,d3.max(data,d=>d.total_cases)||1]).nice().range([h-m.bottom,m.top]);
+   svg.append("g").attr("transform",`translate(0,${h-m.bottom})`).call(d3.axisBottom(x).ticks(6));
+   svg.append("g").attr("transform",`translate(${m.left},0)`).call(d3.axisLeft(y));
+   svg.append("path").datum(data).attr("fill","none").attr("stroke","#2563eb").attr("stroke-width",2)
+     .attr("d",d3.line().x(d=>x(new Date(d.week_start))).y(d=>y(d.total_cases)));
+ }
+ function drawAlerts(){
+   const data=filtered(alerts).sort((a,b)=>new Date(b.week_start)-new Date(a.week_start));
+   const cols=["district_name","disease","week_start","total_cases","alert_threshold"];
+   const table=d3.select("#alerts").html("").append("table");
+   table.append("thead").append("tr").selectAll("th").data(cols).join("th").text(d=>d.replaceAll("_"," "));
+   const tr=table.append("tbody").selectAll("tr").data(data).join("tr");
+   tr.selectAll("td").data(d=>cols.map(k=>d[k])).join("td").text(d=>d??"");
+   if(!data.length)d3.select("#alerts").append("p").text("No alerts for this selection.");
+ }
+ function drawForecast(){
+   const s=selected();
+   let data=forecast.filter(d=>String(d.disease)===s.disease);
+
+   if(s.district!=="ALL"){
+     const code=[...codeToName.entries()]
+       .find(([c,n])=>n===s.district)?.[0];
+     data=data.filter(d=>String(d.district_code)===String(code));
+   }
+
+   // Aggregate all districts week by week when no district is selected
+   if(s.district==="ALL"){
+     data=Array.from(
+       d3.rollup(
+         data,
+         v=>({
+           forecast_cases:d3.sum(v,d=>+d.forecast_cases),
+           lower_80:d3.sum(v,d=>+d.lower_80),
+           upper_80:d3.sum(v,d=>+d.upper_80)
+         }),
+         d=>d3.timeFormat("%Y-%m-%d")(d.forecast_week)
+       ),
+       ([week,v])=>({forecast_week:d3.timeParse("%Y-%m-%d")(week),...v})
+     );
+   } else {
+     data=data.map(d=>({
+       forecast_week:d.forecast_week,
+       forecast_cases:+d.forecast_cases,
+       lower_80:+d.lower_80,
+       upper_80:+d.upper_80
+     }));
+   }
+
+   data.sort((a,b)=>a.forecast_week-b.forecast_week);
+
+   const root=d3.select("#forecast").html("");
+   if(!data.length){root.text("No forecast available for this selection.");return;}
+
+   const w=600,h=300,m={top:20,right:25,bottom:45,left:55};
+   const svg=root.append("svg").attr("viewBox",`0 0 ${w} ${h}`);
+
+   const x=d3.scaleTime()
+     .domain(d3.extent(data,d=>d.forecast_week))
+     .range([m.left,w-m.right]);
+
+   const ymax=d3.max(data,d=>+d.upper_80)||1;
+   const y=d3.scaleLinear()
+     .domain([0,ymax*1.15||1]).nice()
+     .range([h-m.bottom,m.top]);
+
+   svg.append("g")
+     .attr("transform",`translate(0,${h-m.bottom})`)
+     .call(d3.axisBottom(x).ticks(4).tickFormat(d3.timeFormat("%d %b")));
+
+   svg.append("g")
+     .attr("transform",`translate(${m.left},0)`)
+     .call(d3.axisLeft(y));
+
+   // 80% prediction interval
+   svg.append("path").datum(data)
+     .attr("fill","#93c5fd").attr("opacity",0.4)
+     .attr("d",d3.area()
+       .x(d=>x(d.forecast_week))
+       .y0(d=>y(+d.lower_80))
+       .y1(d=>y(+d.upper_80)));
+
+   // Forecast line
+   svg.append("path").datum(data)
+     .attr("fill","none").attr("stroke","#2563eb")
+     .attr("stroke-width",2.5)
+     .attr("d",d3.line()
+       .x(d=>x(d.forecast_week))
+       .y(d=>y(+d.forecast_cases)));
+
+   svg.selectAll("circle").data(data).join("circle")
+     .attr("cx",d=>x(d.forecast_week))
+     .attr("cy",d=>y(+d.forecast_cases))
+     .attr("r",5).attr("fill","#2563eb");
+
+   root.append("p").attr("class","note")
+     .text("Blue line: forecast cases | Shaded area: 80% prediction interval");
+ }
+ function drawResources(){
+   const s=selected();
+
+   let data=resources.filter(d=>String(d.disease)===s.disease);
+
+   if(s.district!=="ALL"){
+     const code=[...codeToName.entries()]
+       .find(([c,n])=>n===s.district)?.[0];
+     data=data.filter(d=>String(d.district_code)===String(code));
+   }
+
+   const grouped=d3.rollups(
+     data,
+     v=>({
+       proportional:d3.sum(v,d=>+d.proportional_allocation),
+       optimized:d3.sum(v,d=>+d.lp_allocated_units),
+       difference:d3.sum(v,d=>+d.allocation_difference)
+     }),
+     d=>String(d.district_code)
+   ).map(([code,v])=>({
+     district:codeToName.get(code)||code,
+     ...v
+   })).sort((a,b)=>a.district.localeCompare(b.district));
+
+   const root=d3.select("#resources").html("");
+
+   if(!grouped.length){
+     root.text("No resource allocation data for this selection.");
+     return;
+   }
+
+   const total=root.append("p").style("font-size","13px")
+     .text("Total proportional allocation: "+
+       d3.sum(grouped,d=>d.proportional)+
+       " | LP optimized allocation: "+
+       d3.sum(grouped,d=>d.optimized));
+
+   const cols=[
+     {key:"district",label:"District"},
+     {key:"proportional",label:"Proportional"},
+     {key:"optimized",label:"LP optimized"},
+     {key:"difference",label:"Difference"}
+   ];
+
+   const table=root.append("div").attr("class","table-wrap")
+     .append("table");
+
+   table.append("thead").append("tr")
+     .selectAll("th").data(cols).join("th")
+     .text(d=>d.label);
+
+   table.append("tbody").selectAll("tr")
+     .data(grouped).join("tr")
+     .selectAll("td")
+     .data(row=>cols.map(c=>row[c.key]))
+     .join("td").text(d=>d??0);
+ }
+ function render(){
+   drawMap();drawTrend();drawAlerts();drawForecast();drawResources();
+ }
+ diseaseSelect.addEventListener("change",render);
+ districtSelect.addEventListener("change",render);
+ render();
+}).catch(error=>{
+ document.body.insertAdjacentHTML("beforeend",
+   "<p style='padding:20px;color:red'>Dashboard loading error: "+error+"</p>");
+ console.error(error);
+});
+</script>
+</body>
+</html>

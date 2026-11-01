@@ -1,0 +1,50 @@
+project:
+  name: EpiScope
+  country: Bangladesh
+  synthetic_data: true
+generator:
+  random_seed: 42
+  default_scale_factor: 0.25
+  benchmark_scale_factors:
+  - 0.25
+  - 0.5
+  - 1.0
+  target_records_at_scale_1: 25000000
+  start_date: '2021-01-01'
+  end_date: '2025-12-31'
+  district_count: 64
+  minimum_facilities: 600
+incremental:
+  lookback_days: 21
+  default_input_days: 14
+  input_directory: data/raw/incremental
+diseases:
+  dengue:
+  - A90
+  - A91
+  diarrhoea:
+  - A00
+  - A09
+  influenza_ili:
+  - J10
+  - J11
+  malaria:
+  - B50
+  - B51
+  - B52
+  - B53
+  - B54
+weather:
+  dengue_rainfall_lag_weeks:
+  - 4
+  - 8
+  diarrhoea_extreme_rain_lag: true
+data_paths:
+  raw: data/raw
+  reference: data/reference
+  bronze: data/bronze
+  silver: data/silver
+  gold: data/gold
+  fixtures: data/fixtures
+  checkpoints: data/checkpoints
+  ground_truth: data/reference/ground_truth

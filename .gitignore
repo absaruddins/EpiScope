@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Secrets
+.env
+*.key
+*.salt
+patient_salt*
+*.pem
+
+# Generated and sensitive datasets
+data/
+logs/
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
