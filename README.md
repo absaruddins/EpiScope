@@ -92,18 +92,20 @@ The outbreak evaluation detected 7 of 31 synthetic events (22.58% event sensitiv
 ## 9. Dashboard
 The D3.js v7 dashboard contains:
 1. District disease map.
-2. Weekly disease trend.
-3. Outbreak alerts.
-4. Four-week forecast.
-5. Resource allocation comparison.
+   
+     ![My Project Screenshot](dashboard_map.png)
+                                              Fig-1:Dashboard_map
+   
+3. Weekly disease trend.
+4. Outbreak alerts.
+5. Four-week forecast.
+6. Resource allocation comparison.
 
-  ![My Project Screenshot](dashboard_map.png)
-  
-              pig:Dashboard_map
+
               
   ![My Project Screenshot](dashboard_chart.png)
   
-             pig:Dashboard_chart
+             Fig-2:Dashboard_chart
 
 Run locally from the project directory:
 ```bash
